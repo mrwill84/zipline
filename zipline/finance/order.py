@@ -20,6 +20,7 @@ from six import text_type
 import zipline.protocol as zp
 from zipline.assets import Asset
 from zipline.utils.enum import enum
+from zipline.utils.input_validation import expect_types
 
 ORDER_STATUS = enum(
     'OPEN',
@@ -41,28 +42,28 @@ class Order(object):
     # using __slots__ to save on memory usage.  Simulations can create many
     # Order objects and we keep them all in memory, so it's worthwhile trying
     # to cut down on the memory footprint of this object.
-    __slots__ = ["id", "dt", "reason", "created", "sid", "amount", "filled",
+    __slots__ = ["id", "dt", "reason", "created", "asset", "amount", "filled",
                  "commission", "_status", "stop", "limit", "stop_reached",
                  "limit_reached", "direction", "type", "broker_order_id"]
 
-    def __init__(self, dt, sid, amount, stop=None, limit=None, filled=0,
+    @expect_types(asset=Asset)
+    def __init__(self, dt, asset, amount, stop=None, limit=None, filled=0,
                  commission=0, id=None):
         """
         @dt - datetime.datetime that the order was placed
-        @sid - asset for the order.  called sid for historical reasons.
+        @asset - asset for the order.
         @amount - the number of shares to buy/sell
                   a positive sign indicates a buy
                   a negative sign indicates a sell
         @filled - how many shares of the order have been filled so far
         """
-        assert isinstance(sid, Asset)
 
         # get a string representation of the uuid.
         self.id = self.make_id() if id is None else id
         self.dt = dt
         self.reason = None
         self.created = dt
-        self.sid = sid
+        self.asset = asset
         self.amount = amount
         self.filled = filled
         self.commission = commission
@@ -214,14 +215,6 @@ class Order(object):
     @property
     def open(self):
         return self.status in [ORDER_STATUS.OPEN, ORDER_STATUS.HELD]
-
-    @property
-    def asset(self):
-        """
-        Convenience accessor to hide away a historical API that we'd like to
-        change at some point.
-        """
-        return self.sid
 
     @property
     def triggered(self):
